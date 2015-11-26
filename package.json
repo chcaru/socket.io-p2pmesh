@@ -1,0 +1,6 @@
+{
+    "name": "socket.io-p2pmesh",
+    "dependencies": {
+        "delaunay-fast": "^1.0.1"
+    }
+}
