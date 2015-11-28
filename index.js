@@ -2,10 +2,9 @@
 var delaunay = require('delaunay-fast');
 var crypto = require('crypto');
 
-function P2PMesh(io, opts, log) {
+function P2PMesh(io, opts) {
 
     this.io = io.of('/mesh');
-    this.log = log;
 
     this.locator = (opts && opts.locator) || function() {
         return [Math.random() * 1000, Math.random() * 1000];
@@ -31,6 +30,8 @@ function P2PMesh(io, opts, log) {
 
                 self._remove(vert);
             });
+        }, function(error) {
+            console.log(error);
         });
     });
 }
@@ -46,6 +47,7 @@ P2PMesh.prototype._add = function(socket) {
         verts.push(location);
 
         var newGraph = self._calcNewGraph(verts);
+
         var regulation = self._regulate(newGraph.diff, verts, newGraph.graph, true);
 
         regulation.then(function() {
@@ -56,7 +58,7 @@ P2PMesh.prototype._add = function(socket) {
             position.resolve(location);
 
         }, function(error) {
-            position.resolve(error);
+            position.reject(error);
         });
     });
 };
@@ -130,26 +132,20 @@ P2PMesh.prototype._regulateNode = function(id, node, cont, revert) {
     var socketA = this.sockets[id];
 
     for (var id2 in node.add) {
-
         var socketB = this.sockets[node.add[id2]];
         promises.push(this._connect(socketA, socketB));
     }
 
     var self = this;
-
     cont.then(function() {
-
         for (var id2 in node.remove) {
-
             var socketB = self.sockets[node.remove[id2]];
             self._disconnect(socketA, socketB);
         }
     });
 
     revert.then(function() {
-
         for (var id2 in node.add) {
-
             var socketB = self.sockets[node.add[id2]];
             self._disconnect(socketA, socketB);
         }
@@ -160,13 +156,15 @@ P2PMesh.prototype._regulateNode = function(id, node, cont, revert) {
 
 P2PMesh.prototype._connect = function(socketA, socketB) {
 
-    var deferred = Promise.defer();
+    var connection = Promise.defer();
 
     var offerA = Promise.defer();
-    var offerB = Promise.defer();
+    var answerB = Promise.defer();
 
-    socketA.emit('getOffer', function(offer) {
+    var socketAId = crypto.createHash('md5').update(socketA.id).digest('hex');
+    var socketBId = crypto.createHash('md5').update(socketB.id).digest('hex');
 
+    socketA.emit('initConnection', socketBId, function(offer) {
         if (offer) {
             offerA.resolve(offer);
         } else {
@@ -174,53 +172,35 @@ P2PMesh.prototype._connect = function(socketA, socketB) {
         }
     });
 
-    socketB.emit('getOffer', function(offer) {
-
-        if (offer) {
-            offerB.resolve(offer);
-        } else {
-            offerB.reject('no offer');
-        }
+    offerA.promise.then(function(offer) {
+        socketB.emit('answerConnection', socketAId, offer, function(answer) {
+            if (answer) {
+                answerB.resolve(answer);
+            } else {
+                answerB.reject('no answer');
+            }
+        });
+    }, function(error) {
+        answerB.reject(error);
     });
 
-    Promise.all([offerA.promise, offerB.promise]).then(function(offers) {
-
-        var connectionA = Promise.defer();
-        var connectionB = Promise.defer();
-
-        var socketBId = crypto.createHash('md5').update(socketB.id).digest('hex');
-        socketA.emit('connectTo', socketBId, offers[1], function(success) {
-
+    answerB.promise.then(function(answer) {
+        socketA.emit('finishConnection', socketBId, answer, function(success) {
             if (success) {
-                connectionA.resolve();
+                connection.resolve();
             } else {
-                connectionA.reject('could not connect');
+                connection.reject('unable to connect');
             }
         });
-
-        var socketAId = crypto.createHash('md5').update(socketA.id).digest('hex');
-        socketB.emit('connectTo', socketAId, offers[0], function(success) {
-
-            if (success) {
-                connectionB.resolve();
-            } else {
-                connectionB.reject('could not connect');
-            }
-        });
-
-        Promise.all([connectionA.promise, connectionB.promise]).then(function() {
-            deferred.resolve();
-        });
-
     }, function(error) {
-        deferred.reject(error);
+        connection.reject(error);
     });
 
     setTimeout(function() {
-        deferred.reject('connection timeout');
+        connection.reject('timeout');
     }, this.timeout);
 
-    return deferred.promise;
+    return connection.promise;
 };
 
 P2PMesh.prototype._disconnect = function(socketA, socketB) {
@@ -229,13 +209,11 @@ P2PMesh.prototype._disconnect = function(socketA, socketB) {
     var socketBId = crypto.createHash('md5').update(socketB.id).digest('hex');
 
     socketA.emit('disconnectFrom', socketBId);
-
-    // Redundancy for safe measure
     socketB.emit('disconnectFrom', socketAId);
 };
 
 P2PMesh.prototype._enqueueAction = function(action) {
-    this.log('enqueueing action: ' + action);
+
     var position = Promise.defer();
     var previous = this.chain;
     this.chain = position.promise;
@@ -311,6 +289,7 @@ P2PMesh.prototype._delaunayDiff = function(d1, v1, d2, v2) {
             });
 
             node.remove.push(xy[1]);
+
         } else if (v === 2) {
 
             var node = result[xy[0]] = (result[xy[0]] || {

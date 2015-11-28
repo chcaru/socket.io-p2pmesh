@@ -1,6 +1,20 @@
 {
     "name": "socket.io-p2pmesh",
+    "version": "0.0.1",
+    "description": "Allows a server to maintain a rtcp2p mesh.",
     "dependencies": {
         "delaunay-fast": "^1.0.1"
+    },
+    "contributors": [
+        {
+          "name": "Chris Caruso",
+          "email": "chriscaruso@live.com"
+        }
+    ],
+    "main": "./index",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/chcaru/socket.io-p2pmesh"
     }
 }
