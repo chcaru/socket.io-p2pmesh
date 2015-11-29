@@ -1,14 +1,14 @@
 # socket.io-p2pmesh
 
-socket.io-p2pmesh is a WebRTC peer-to-peer mesh maintainer for node.js. It enables clients to directly communicate among each other in large networks (mesh) without ever having to communicate to the server the data which is to be transfered among clients. This takes the burden off the server which is common of large scale WebSocket applications. This component uses socket.io on the server to act as the signaler in a WebRTC connection. The client is expected to have socket.io-p2pmesh-client. The client initiates the connection, and is super easy to use.
+socket.io-p2pmesh is a WebRTC peer-to-peer mesh maintainer for node.js. It enables clients to directly communicate among each other in large networks (mesh) without ever having to communicate to the server the data which is to be transferred among clients. This takes the burden off the server which is common of large scale WebSocket applications. This component uses socket.io on the server to act as the signaler in a WebRTC connection. The client is expected to have socket.io-p2pmesh-client. The client initiates the connection, and is super easy to use.
 
 ## The Mesh Topology
 
-The primary motivation for this was creating an efficient mesh topology that didn't overload any single client. Most existing WebRTC libraries that handle signaling allow fully connected topologies, which means that for each client in the network, it is connected to all the other clients. As you can imagine, the number of edges in a large  network grow too fast to be practical. To combat edge explosion, [Deluanay Triangulation] is used to compute an efficient network topology. On average, each client should have ~6 connections to other clients. This can be more or less for any individual client, but the average is a known property of [Deluanay Triangulation]. Below you can see how a mesh would evolve over time, with the addition and removal of clients. The blue lines represent a WebRTC connection between two clients:
+The primary motivation for this was creating an efficient mesh topology that didn't overload any single client. Most existing WebRTC libraries that handle signaling allow fully connected topologies, which means that for each client in the network, it is connected to all the other clients. As you can imagine, the number of edges in a large  network grow too fast to be practical. To combat edge explosion, [Delaunay Triangulation] is used to compute an efficient network topology. On average, each client should have ~6 connections to other clients. This can be more or less for any individual client, but the average is a known property of [Delaunay Triangulation]. Below you can see how a mesh would evolve over time, with the addition and removal of clients. The blue lines represent a WebRTC connection between two clients:
 
 ![alt tag](http://i.giphy.com/xTk9ZD25IbIfVpjapO.gif)
 
-[Deluanay Triangulation] can be computed in n-dimensional Euclidean space, although, for the present time, the mesh is computed in a 2D plane ([x,y] coords) for simplicity, as it covers many use cases.
+[Delaunay Triangulation] can be computed in n-dimensional Euclidean space, although, for the present time, the mesh is computed in a 2D plane ([x,y] coords) for simplicity, as it covers many use cases.
 
 By default, the [x,y] position of a client in the computation is completely random. This does not compute the most efficient mesh possible though. This is why, in more advanced use cases, the positioning of clients in this space can be substituted for a more desirable implementation based on the use case. Two easy, yet more efficient, examples, might be to:
 
@@ -39,4 +39,4 @@ This project is still a work in progress, and is subject to change until a stabl
 MIT
 
 [//]: #
-[Deluanay Triangulation]: <https://en.wikipedia.org/wiki/Delaunay_triangulation>  
+[Delaunay Triangulation]: <https://en.wikipedia.org/wiki/Delaunay_triangulation>  
